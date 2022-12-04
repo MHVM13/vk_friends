@@ -1,6 +1,4 @@
 import requests
-import json
-import numpy as np
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -11,19 +9,16 @@ API_URI = 'https://api.vk.com/method/'
 # Список одногрупников, по которым будем искать друзей
 SCREEN_NAMES = ['amaslo0', 'ruzakovskiy', 'spymsx1337', 'gendorosan', 'shis_213']
 
-# Информация об одногрупниках
+# Все информация о друзьях
 df_group = pd.DataFrame(columns=['main_friend', 'id', 'first_name', 'last_name'])
-# Информация о друзьях одногрупников
-df_friends = pd.DataFrame(columns=['main_friend', 'id', 'first_name', 'last_name'])
-# Информация о друзьях друзьей одногрупников
-df_friends_of_friends = pd.DataFrame(columns=['main_friend', 'id', 'first_name', 'last_name'])
 
 friends_graph = nx.Graph()
 
 
 # Вывод графа TODO сделать стилизацию
-def print_graph(graph):
-    nx.draw(graph, )
+def print_graph():
+    pos = nx.spring_layout(friends_graph, scale=40, k=0.30, iterations=20)
+    nx.draw(friends_graph, pos, with_labels=True, font_size=1)
     plt.show()
 
 
@@ -61,26 +56,41 @@ def get_friends(user_id):
         raise Warning('No response from server')
 
 
-# Построение графа
-def build_graph():
+# Функция добавления данных в DataFrame
+def add_to_df(friends_list, main_id):
     global df_group
-    # Получаем информацию об одногрупниках
-    group_list = get_data_group(SCREEN_NAMES)
 
-    # Добавление полученной информации об одногрупниках в DataFrame
-    if len(group_list) != 0:
-        for item in group_list:
-            df_group = df_group.append(
-                {'main_friend': my_id, 'id': item['id'], 'first_name': item['first_name'],
-                 'last_name': item['last_name']}, ignore_index=True)
+    if len(friends_list) != 0:
+        for item in friends_list:
+            df_group = df_group.append({'main_friend': main_id, 'id': item['id'], 'first_name': item['first_name'],
+                                        'last_name': item['last_name']}, ignore_index=True)
 
-    # Добавляем и соединяем вершины в графе
-    #friends_graph.add_edge(df_group['main_friend'][0], df_group['id'][0])
+
+# Функция построения графа и его отображения
+def build_graph():
+    global friends_graph
+
+    for i in range(len(df_group)):
+        friends_graph.add_edge(df_group['main_friend'][i], df_group['id'][i])
+
+    print_graph()
+
+
+# Основная логика
+# group_list = get_data_group(SCREEN_NAMES)  # Список с информаций об одногрупниках
+#
+# # Добавление полученной информации об одногрупниках в DataFrame
+# add_to_df(group_list, my_id)
+# build_graph()
+#
+# friends_list = []  # Список с информаций о друзьях одногрупников
+#
+# for item in group_list:
+#     friends_list = get_friends(str(item['id']))
+#     add_to_df(friends_list, item['id'])
+#
+# build_graph()
+
+# Добавляем и соединяем вершины в графе
 
     # Получаем информацию о друзьях одногрупников
-
-
-# MAIN
-build_graph()
-print(df_group)
-print_graph(friends_graph)
