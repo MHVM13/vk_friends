@@ -51,6 +51,7 @@ def get_friends(user_id):
 
     # Если получили ответ от сервера
     if reply.json():
+        # TODO проверка на существование пользователя и приватный ли у него профиль
         return reply.json()['response']['items']
     else:
         raise Warning('No response from server')
@@ -76,21 +77,48 @@ def build_graph():
     print_graph()
 
 
-# Основная логика
-# group_list = get_data_group(SCREEN_NAMES)  # Список с информаций об одногрупниках
-#
-# # Добавление полученной информации об одногрупниках в DataFrame
-# add_to_df(group_list, my_id)
-# build_graph()
-#
-# friends_list = []  # Список с информаций о друзьях одногрупников
-#
-# for item in group_list:
-#     friends_list = get_friends(str(item['id']))
-#     add_to_df(friends_list, item['id'])
-#
-# build_graph()
+# ОСНОВНАЯ ЛОГИКА
+# Получение данных об одногрупниках и постороение графа с ними
+group_list = get_data_group(SCREEN_NAMES)  # Список с информаций об одногрупниках
+add_to_df(group_list, my_id)  # Добавление полученной информации об одногрупниках в DataFrame
+build_graph()  # Построение графа одногрупников
 
-# Добавляем и соединяем вершины в графе
+# Получение данных о друзьях одногрупников и постороение графа с ними
+counter = 0
+friends_group_list = []  # Список друзей одногрупников
 
-    # Получаем информацию о друзьях одногрупников
+# Получение списка друзей одногрупников
+for item in group_list:
+    friends_group_list.append(get_friends(str(item['id'])))
+    add_to_df(friends_group_list[counter], item['id'])
+    counter += 1
+
+build_graph()
+
+# Получение списка друзей друзей одногрупников и построение графа с ними
+print(friends_group_list) # TODO delete
+for i in friends_group_list:
+    for j in i:
+        print(j)
+        ff_list = get_friends(str(j['id']))
+        add_to_df(ff_list, j['id'])
+
+
+
+# Оценка центральности по посредничеству
+print("Оценка центральности по посредничеству")
+close_centrality = nx.closeness_centrality(friends_graph)
+# TODO отсортировать значения по убыванию
+print(close_centrality)
+
+# Оценка центральности по близости
+print("Оценка центральности по близости")
+between_centrality = nx.betweenness_centrality(friends_graph, normalized = True, endpoints = False)
+# TODO отсортировать значения по убыванию
+print(between_centrality)
+
+# Оценка центральности по собственному вектору
+print("Оценка центральности по собственному вектору")
+eigenvector_centrality = nx.eigenvector_centrality_numpy(friends_graph)
+# TODO отсортировать значения по убыванию
+print(eigenvector_centrality)
