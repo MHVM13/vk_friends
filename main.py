@@ -15,33 +15,52 @@ df_group = pd.DataFrame(columns=['main_friend', 'id', 'first_name', 'last_name']
 friends_graph = nx.Graph()
 
 
-# Вывод графа TODO сделать стилизацию
+# Вывод графа TODO сделать стилизацию может побольше вывод
 def print_graph():
     pos = nx.spring_layout(friends_graph, scale=40, k=0.30, iterations=20)
-    nx.draw(friends_graph, pos, with_labels=True, font_size=1)
+    nx.draw(friends_graph, pos, with_labels=True, font_size=2)
     plt.show()
 
 
 # Получение информации об одногрупниках
 def get_data_group(users_id_list):
+    """
+    :param users_id_list: the list of users ids
+    :return: Returns 'response' list if everything is good and -1 if there is some error
+    """
+
     # Преобразование полученного списка в string
     users_id_str = ','.join(users_id_list)
+    reply = None
 
-    reply = requests.get(API_URI + 'users.get', params={
-        'user_ids': users_id_str,
-        'access_token': ACCESS_TOKEN,
-        'v': API_VERSION
-    })
+    try:
+        reply = requests.get(API_URI + 'users.get', params={
+            'user_ids': users_id_str,
+            'access_token': ACCESS_TOKEN,
+            'v': API_VERSION
+        })
+    except Exception:  # Если нет соединения с интернетом
+        print('Check internet connection')
+        exit()
 
     # Если пришел ответ от сервера
     if reply.json():
-        return reply.json()['response']
+        if 'response' in reply.json():  # Если есть поле response с данными
+            return reply.json()['response']
+        else:
+            print('This profile is private')
+            return -1
     else:
-        raise Warning('No response from server')
+        print('No reply from server')
+        return -1
 
 
 # Получаем список друзей заданного пользователя
 def get_friends(user_id):
+    """
+    :param user_id: the user id
+    :return: Returns 'response''items' list if everything is good and -1 if there is some error
+    """
     reply = requests.get(API_URI + 'friends.get', params={
         'user_id': user_id,
         'fields': 'name',
@@ -51,10 +70,14 @@ def get_friends(user_id):
 
     # Если получили ответ от сервера
     if reply.json():
-        # TODO проверка на существование пользователя и приватный ли у него профиль
-        return reply.json()['response']['items']
+        if 'response' in reply.json():  # Если есть поле response с данными
+            return reply.json()['response']['items']
+        else:
+            print('This profile is private')
+            return -1
     else:
-        raise Warning('No response from server')
+        print('No reply from server')
+        return -1
 
 
 # Функция добавления данных в DataFrame
@@ -89,21 +112,20 @@ friends_group_list = []  # Список друзей одногрупников
 
 # Получение списка друзей одногрупников
 for item in group_list:
-    friends_group_list.append(get_friends(str(item['id'])))
+    if get_friends(str(item['id'])) != -1:
+        friends_group_list.append(get_friends(str(item['id'])))
     add_to_df(friends_group_list[counter], item['id'])
     counter += 1
 
 build_graph()
 
 # Получение списка друзей друзей одногрупников и построение графа с ними
-print(friends_group_list) # TODO delete
+print(friends_group_list)  # TODO delete
 for i in friends_group_list:
     for j in i:
         print(j)
         ff_list = get_friends(str(j['id']))
         add_to_df(ff_list, j['id'])
-
-
 
 # Оценка центральности по посредничеству
 print("Оценка центральности по посредничеству")
@@ -113,7 +135,7 @@ print(close_centrality)
 
 # Оценка центральности по близости
 print("Оценка центральности по близости")
-between_centrality = nx.betweenness_centrality(friends_graph, normalized = True, endpoints = False)
+between_centrality = nx.betweenness_centrality(friends_graph, normalized=True, endpoints=False)
 # TODO отсортировать значения по убыванию
 print(between_centrality)
 
