@@ -101,12 +101,12 @@ def build_graph():
 
 
 # ОСНОВНАЯ ЛОГИКА
-# Получение данных об одногрупниках и постороение графа с ними
+# 1. Получение данных об одногрупниках и постороение графа с ними
 group_list = get_data_group(SCREEN_NAMES)  # Список с информаций об одногрупниках
 add_to_df(group_list, my_id)  # Добавление полученной информации об одногрупниках в DataFrame
 build_graph()  # Построение графа одногрупников
 
-# Получение данных о друзьях одногрупников и постороение графа с ними
+# 2. Получение данных о друзьях одногрупников и постороение графа с ними
 counter = 0
 friends_group_list = []  # Список друзей одногрупников
 
@@ -114,18 +114,27 @@ friends_group_list = []  # Список друзей одногрупников
 for item in group_list:
     if get_friends(str(item['id'])) != -1:
         friends_group_list.append(get_friends(str(item['id'])))
+    else:
+        continue
+
     add_to_df(friends_group_list[counter], item['id'])
     counter += 1
 
 build_graph()
 
-# Получение списка друзей друзей одногрупников и построение графа с ними
-print(friends_group_list)  # TODO delete
+# 3. Получение списка друзей друзей одногрупников и построение графа с ними
 for i in friends_group_list:
     for j in i:
         print(j)
-        ff_list = get_friends(str(j['id']))
-        add_to_df(ff_list, j['id'])
+        try:
+            if get_friends(str(j['id'])) != -1:
+                add_to_df(get_friends(str(j['id'])), j['id'])
+            else:
+                continue
+        except TypeError:
+            print('a')
+
+build_graph()
 
 # Оценка центральности по посредничеству
 print("Оценка центральности по посредничеству")
