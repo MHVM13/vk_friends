@@ -15,13 +15,6 @@ df_group = pd.DataFrame(columns=['main_friend', 'id', 'first_name', 'last_name']
 friends_graph = nx.Graph()
 
 
-# Вывод графа TODO сделать стилизацию может побольше вывод
-def print_graph():
-    pos = nx.spring_layout(friends_graph, scale=40, k=0.30, iterations=20)
-    nx.draw(friends_graph, pos, with_labels=True, font_size=2)
-    plt.show()
-
-
 # Получение информации об одногрупниках
 def get_data_group(users_id_list):
     """
@@ -30,7 +23,11 @@ def get_data_group(users_id_list):
     """
 
     # Преобразование полученного списка в string
-    users_id_str = ','.join(users_id_list)
+    if type(users_id_list) == list:
+        users_id_str = ','.join(users_id_list)
+    else:
+        users_id_str = users_id_list
+
     reply = None
 
     try:
@@ -61,12 +58,18 @@ def get_friends(user_id):
     :param user_id: the user id
     :return: Returns 'response''items' list if everything is good and -1 if there is some error
     """
-    reply = requests.get(API_URI + 'friends.get', params={
-        'user_id': user_id,
-        'fields': 'name',
-        'access_token': ACCESS_TOKEN,
-        'v': API_VERSION
-    })
+    reply = None
+
+    try:
+        reply = requests.get(API_URI + 'friends.get', params={
+            'user_id': user_id,
+            'fields': 'name',
+            'access_token': ACCESS_TOKEN,
+            'v': API_VERSION
+        })
+    except Exception:  # Если нет соединения с интернетом
+        print('Check internet connection')
+        exit()
 
     # Если получили ответ от сервера
     if reply.json():
@@ -90,21 +93,28 @@ def add_to_df(friends_list, main_id):
                                         'last_name': item['last_name']}, ignore_index=True)
 
 
-# Функция построения графа и его отображения
+# Функция построения графа
 def build_graph():
     global friends_graph
 
     for i in range(len(df_group)):
         friends_graph.add_edge(df_group['main_friend'][i], df_group['id'][i])
 
-    print_graph()
+
+# Вывод графа
+def print_graph():
+    build_graph()
+
+    pos = nx.spring_layout(friends_graph, scale=40, k=0.30, iterations=20)
+    nx.draw(friends_graph, pos, with_labels=True, font_size=2)
+    plt.show()
 
 
 # ОСНОВНАЯ ЛОГИКА
 # 1. Получение данных об одногрупниках и постороение графа с ними
 group_list = get_data_group(SCREEN_NAMES)  # Список с информаций об одногрупниках
 add_to_df(group_list, my_id)  # Добавление полученной информации об одногрупниках в DataFrame
-build_graph()  # Построение графа одногрупников
+print_graph()
 
 # 2. Получение данных о друзьях одногрупников и постороение графа с ними
 counter = 0
@@ -120,36 +130,48 @@ for item in group_list:
     add_to_df(friends_group_list[counter], item['id'])
     counter += 1
 
-build_graph()
+print_graph()
+print(friends_graph.number_of_nodes())
 
 # 3. Получение списка друзей друзей одногрупников и построение графа с ними
-for i in friends_group_list:
-    for j in i:
-        print(j)
-        try:
-            if get_friends(str(j['id'])) != -1:
-                add_to_df(get_friends(str(j['id'])), j['id'])
-            else:
-                continue
-        except TypeError:
-            print('a')
-
-build_graph()
+# for i in friends_group_list:
+#     for j in i:
+#         print(j)
+#         try:
+#             if get_friends(str(j['id'])) != -1:
+#                 add_to_df(get_friends(str(j['id'])), j['id'])
+#             else:
+#                 continue
+#         except TypeError:
+#             continue
+#
+# print_graph()
 
 # Оценка центральности по посредничеству
 print("Оценка центральности по посредничеству")
 close_centrality = nx.closeness_centrality(friends_graph)
-# TODO отсортировать значения по убыванию
-print(close_centrality)
+close_centrality = sorted(close_centrality.items(), key=lambda item: item[1], reverse=True)
+for i in range(3):
+    reply = get_data_group(close_centrality[i][0])
+    full_name = reply[0]['first_name'] + ' ' + reply[0]['last_name']
+    print(f"{full_name}: {close_centrality[i][1]}")
+print()
 
 # Оценка центральности по близости
 print("Оценка центральности по близости")
 between_centrality = nx.betweenness_centrality(friends_graph, normalized=True, endpoints=False)
-# TODO отсортировать значения по убыванию
-print(between_centrality)
+between_centrality = sorted(between_centrality.items(), key=lambda item: item[1], reverse=True)
+for i in range(3):
+    reply = get_data_group(between_centrality[i][0])
+    full_name = reply[0]['first_name'] + ' ' + reply[0]['last_name']
+    print(f"{full_name}: {between_centrality[i][1]}")
+print()
 
 # Оценка центральности по собственному вектору
 print("Оценка центральности по собственному вектору")
 eigenvector_centrality = nx.eigenvector_centrality_numpy(friends_graph)
-# TODO отсортировать значения по убыванию
-print(eigenvector_centrality)
+eigenvector_centrality = sorted(eigenvector_centrality.items(), key=lambda item: item[1], reverse=True)
+for i in range(3):
+    reply = get_data_group(eigenvector_centrality[i][0])
+    full_name = reply[0]['first_name'] + ' ' + reply[0]['last_name']
+    print(f"{full_name}: {eigenvector_centrality[i][1]}")
